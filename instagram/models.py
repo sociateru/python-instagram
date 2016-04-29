@@ -90,14 +90,15 @@ class Media(ApiModel):
             new_media.user_has_liked = entry['user_has_liked']
         new_media.like_count = entry['likes']['count']
         new_media.likes = []
-        if 'data' in entry['likes']:
+        if entry['likes'].get('data'):
             for like in entry['likes']['data']:
                 new_media.likes.append(User.object_from_dictionary(like))
 
         new_media.comment_count = entry['comments']['count']
         new_media.comments = []
-        for comment in entry['comments']['data']:
-            new_media.comments.append(Comment.object_from_dictionary(comment))
+        if entry['comments'].get('data'):
+            for comment in entry['comments']['data']:
+                new_media.comments.append(Comment.object_from_dictionary(comment))
 
         new_media.users_in_photo = []
         if entry.get('users_in_photo'):
@@ -106,15 +107,15 @@ class Media(ApiModel):
 
         new_media.created_time = timestamp_to_datetime(entry['created_time'])
 
-        if entry['location'] and 'id' in entry:
+        if entry.get('location') and 'id' in entry:
             new_media.location = Location.object_from_dictionary(entry['location'])
 
         new_media.caption = None
-        if entry['caption']:
+        if entry.get('caption'):
             new_media.caption = Comment.object_from_dictionary(entry['caption'])
         
         new_media.tags = []
-        if entry['tags']:
+        if entry.get('tags'):
             for tag in entry['tags']:
                 new_media.tags.append(Tag.object_from_dictionary({'name': tag}))
 
