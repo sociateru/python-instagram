@@ -69,6 +69,7 @@ def bind_method(**config):
             self.return_json = kwargs.pop("return_json", False)
             self.max_pages = kwargs.pop("max_pages", 3)
             self.with_next_url = kwargs.pop("with_next_url", None)
+            self.timeout = kwargs.pop('timeout', 60)
             self.parameters = {}
             self._build_parameters(args, kwargs)
             self._build_path()
@@ -126,7 +127,9 @@ def bind_method(**config):
                 signature = hmac.new(secret, ips, sha256).hexdigest()
                 headers['X-Insta-Forwarded-For'] = '|'.join([ips, signature])
 
-            response, content = OAuth2Request(self.api).make_request(url, method=method, body=body, headers=headers)
+            response, content = OAuth2Request(self.api).make_request(
+                url, method=method, body=body, headers=headers, timeout=self.timeout
+            )
             if response['status'] == '503':
                 raise InstagramAPIError(response['status'], "Service Unavailable", "The Service is temporarily unavailable")
             if response['status'] == '429':
