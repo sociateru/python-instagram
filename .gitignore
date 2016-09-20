@@ -3,3 +3,6 @@
 *.swp
 test_settings.py
 
+.idea/
+*.egg-info/
+dist/

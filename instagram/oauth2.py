@@ -26,13 +26,19 @@ class OAuth2API(object):
     protocol = "https"
     # override with 'Instagram', etc
     api_name = "Generic API"
+    timeout = 60
 
-    def __init__(self, client_id=None, client_secret=None, client_ips=None, access_token=None, redirect_uri=None):
+    def __init__(
+        self, client_id=None, client_secret=None, client_ips=None, access_token=None, redirect_uri=None, timeout=None
+    ):
         self.client_id = client_id
         self.client_secret = client_secret
         self.client_ips = client_ips
         self.access_token = access_token
         self.redirect_uri = redirect_uri
+
+        if timeout and timeout > 0:
+            self.timeout = timeout
 
     def get_authorize_url(self, scope=None):
         req = OAuth2AuthExchangeRequest(self)
@@ -41,21 +47,21 @@ class OAuth2API(object):
     def get_authorize_login_url(self, scope=None):
         """ scope should be a tuple or list of requested scope access levels """
         req = OAuth2AuthExchangeRequest(self)
-        return req.get_authorize_login_url(scope=scope)
+        return req.get_authorize_login_url(scope=scope, timeout=self.timeout)
 
     def exchange_code_for_access_token(self, code):
         req = OAuth2AuthExchangeRequest(self)
-        return req.exchange_for_access_token(code=code)
+        return req.exchange_for_access_token(code=code, timeout=self.timeout)
 
     def exchange_user_id_for_access_token(self, user_id):
         req = OAuth2AuthExchangeRequest(self)
-        return req.exchange_for_access_token(user_id=user_id)
+        return req.exchange_for_access_token(user_id=user_id, timeout=self.timeout)
 
     def exchange_xauth_login_for_access_token(self, username, password, scope=None):
         """ scope should be a tuple or list of requested scope access levels """
         req = OAuth2AuthExchangeRequest(self)
         return req.exchange_for_access_token(username=username, password=password,
-                                             scope=scope)
+                                             scope=scope, timeout=self.timeout)
 
 
 class OAuth2AuthExchangeRequest(object):
@@ -95,8 +101,8 @@ class OAuth2AuthExchangeRequest(object):
     def get_authorize_url(self, scope=None):
         return self._url_for_authorize(scope=scope)
 
-    def get_authorize_login_url(self, scope=None):
-        http_object = Http(disable_ssl_certificate_validation=True)
+    def get_authorize_login_url(self, scope=None, timeout=None):
+        http_object = Http(disable_ssl_certificate_validation=True, timeout=timeout)
 
         url = self._url_for_authorize(scope=scope)
         response, content = http_object.request(url)
@@ -105,9 +111,9 @@ class OAuth2AuthExchangeRequest(object):
         redirected_to = response['content-location']
         return redirected_to
 
-    def exchange_for_access_token(self, code=None, username=None, password=None, scope=None, user_id=None):
+    def exchange_for_access_token(self, code=None, username=None, password=None, scope=None, user_id=None, timeout=None):
         data = self._data_for_exchange(code, username, password, scope=scope, user_id=user_id)
-        http_object = Http(disable_ssl_certificate_validation=True)
+        http_object = Http(disable_ssl_certificate_validation=True, timeout=timeout)
         url = self.api.access_token_url
         response, content = http_object.request(url, method="POST", body=data)
         parsed_content = simplejson.loads(content.decode())
@@ -128,12 +134,6 @@ class OAuth2Request(object):
 
     def url_for_get(self, path, parameters):
         return self._full_url_with_params(path, parameters)
-
-    def get_request(self, path, **kwargs):
-        return self.make_request(self.prepare_request("GET", path, kwargs))
-
-    def post_request(self, path, **kwargs):
-        return self.make_request(self.prepare_request("POST", path, kwargs))
 
     def _full_url(self, path, include_secret=False, include_signed_request=True):
         return "%s://%s%s%s%s%s" % (self.api.protocol,
@@ -207,9 +207,9 @@ class OAuth2Request(object):
 
         return body, headers
 
-    def prepare_and_make_request(self, method, path, params, include_secret=False):
+    def prepare_and_make_request(self, method, path, params, include_secret=False, timeout=None):
         url, method, body, headers = self.prepare_request(method, path, params, include_secret)
-        return self.make_request(url, method, body, headers)
+        return self.make_request(url, method, body, headers, timeout)
 
     def prepare_request(self, method, path, params, include_secret=False):
         url = body = None
@@ -228,11 +228,15 @@ class OAuth2Request(object):
 
         return url, method, body, headers
 
-    def make_request(self, url, method="GET", body=None, headers=None):
+    def make_request(self, url, method="GET", body=None, headers=None, timeout=None):
         headers = headers or {}
         if not 'User-Agent' in headers:
             headers.update({"User-Agent": "%s Python Client" % self.api.api_name})
         # https://github.com/jcgregorio/httplib2/issues/173
         # bug in httplib2 w/ Python 3 and disable_ssl_certificate_validation=True
-        http_obj = Http() if six.PY3 else Http(disable_ssl_certificate_validation=True)        
+        http_kw = {'timeout': timeout}
+        if not six.PY3:
+            http_kw['disable_ssl_certificate_validation'] = True
+
+        http_obj = Http(**http_kw)
         return http_obj.request(url, method, body=body, headers=headers)
