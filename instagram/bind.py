@@ -112,7 +112,9 @@ def bind_method(**config):
 
         def _build_pagination_info(self, content_obj):
             """Extract pagination information in the desired format."""
-            pagination = content_obj.get('pagination', {})
+            pagination = content_obj.get('pagination')
+            if pagination is None:
+                pagination = {}
             if self.pagination_format == 'next_url':
                 return pagination.get('next_url')
             if self.pagination_format == 'dict':
