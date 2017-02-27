@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 
 NAME = 'python-instagram'
-VERSION = '1.3.2.5'
+VERSION = '1.3.2.6'
 
 
 REQUIREMENTS = [

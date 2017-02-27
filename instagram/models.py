@@ -83,7 +83,8 @@ class Media(ApiModel):
 
         if new_media.type == 'video':
             new_media.videos = {}
-            for version, version_info in six.iteritems(entry['videos']):
+            # entry.get because sometimes there is no `videos`
+            for version, version_info in six.iteritems(entry.get('videos', {})):
                 new_media.videos[version] = Video.object_from_dictionary(version_info)
 
         if 'user_has_liked' in entry:
